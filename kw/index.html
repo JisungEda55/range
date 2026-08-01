@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BMW X3 vs KIA EV4 주행 비용 비교 계산기 (속도별 충전단가 지원)</title>
+    <!-- 데이터 분석 라이브러리 추가 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <style>
+        /* LINE Seed KR 폰트 적용 */
+        @font-face {
+            font-family: 'LINE Seed KR';
+            src: url('https://fastly.jsdelivr.net/gh/Project-Noonnu/noonfonts_11-01@1.0/LINESeedKR-Rg.woff2') format('woff2');
+            font-weight: 400;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'LINE Seed KR';
+            src: url('https://fastly.jsdelivr.net/gh/Project-Noonnu/noonfonts_11-01@1.0/LINESeedKR-Bd.woff2') format('woff2');
+            font-weight: 700;
+            font-style: normal;
+        }
+
+        :root {
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --primary-color: #0056b3; 
+            --ev-color: #05a569;      
+            --text-main: #222222;
+            --text-muted: #777777;
+            --border-color: #e5e5ea;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'LINE Seed KR', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.7rem;
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+
+        p.subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 30px;
+            font-size: 0.95rem;
+        }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        @media (min-width: 768px) {
+            .grid-layout {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+        }
+
+        .card-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        /* 파일 업로드 스타일링 */
+        .file-group {
+            background: #fafafa;
+            border: 1px dashed #ccc;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .file-group label {
+            font-weight: 700;
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        .file-desc {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 6px;
+            letter-spacing: -0.3px;
+        }
+
+        input[type="file"] {
+            display: block;
+            width: 100%;
+            font-size: 0.9rem;
+            padding: 6px;
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'LINE Seed KR', sans-serif;
+        }
+
+        input[type="file"]::file-selector-button {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            margin-right: 10px;
+            cursor: pointer;
+            font-family: 'LINE Seed KR', sans-serif;
+            transition: background 0.2s;
+        }
+        
+        #evFile::file-selector-button {
+            background: var(--ev-color);
+        }
+
+        /* 셀렉트 박스 (충전속도) */
+        select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-family: 'LINE Seed KR', sans-serif;
+            font-size: 0.95rem;
+            background-color: #fff;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        select:focus {
+            outline: none;
+            border-color: var(--ev-color);
+            box-shadow: 0 0 0 3px rgba(5, 165, 105, 0.15);
+        }
+
+        /* 입력 그룹 및 옵션 버튼 */
+        .input-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .input-group label {
+            font-size: 0.95rem;
+            color: #444;
+        }
+        
+        .input-col {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .options-row {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 6px;
+        }
+
+        .opt-btn {
+            padding: 4px 8px;
+            font-size: 0.8rem;
+            font-family: 'LINE Seed KR', sans-serif;
+            border: 1px solid var(--border-color);
+            background: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+
+        .opt-btn.active.gas-btn {
+            background: var(--primary-color);
+            color: #fff;
+            border-color: var(--primary-color);
+        }
+
+        .opt-btn.active.ev-btn {
+            background: var(--ev-color);
+            color: #fff;
+            border-color: var(--ev-color);
+        }
+
+        .input-group input[type="number"] {
+            width: 120px;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            text-align: right;
+            font-family: 'LINE Seed KR', sans-serif;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .input-group input[type="number"]:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(0, 86, 179, 0.15);
+        }
+
+        /* 결과 강조 영역 */
+        .highlight-box {
+            background: linear-gradient(135deg, var(--primary-color), var(--ev-color));
+            color: white;
+            border-radius: 16px;
+            padding: 30px 20px;
+            text-align: center;
+            margin-top: 30px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+
+        .highlight-box h2 {
+            font-size: 1.1rem;
+            font-weight: 400;
+            margin-bottom: 8px;
+        }
+
+        .highlight-box .amount {
+            font-size: 2.6rem;
+            font-weight: 700;
+        }
+
+        /* 유지비 결과 카드 그리드 */
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        @media (min-width: 768px) {
+            .results-grid {
+                grid-template-columns: 1fr 1fr 1fr;
+            }
+        }
+
+        .result-card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .result-card h3 {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .compare-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+        }
+        
+        .compare-row.total {
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px dashed var(--border-color);
+        }
+
+        .val-gas { color: var(--primary-color); font-weight: 700;}
+        .val-ev { color: var(--ev-color); font-weight: 700;}
+
+        /* 상세 테이블 토글 */
+        .breakdown-toggle {
+            display: block;
+            width: 100%;
+            padding: 16px;
+            margin-top: 20px;
+            background-color: #e8eaed;
+            border: none;
+            border-radius: 12px;
+            font-family: 'LINE Seed KR', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #333;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .breakdown-toggle:hover { background-color: #dadce0; }
+        
+        .breakdown-content {
+            display: none;
+            margin-top: 16px;
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            white-space: nowrap;
+        }
+        th, td {
+            padding: 14px;
+            text-align: right;
+            border-bottom: 1px solid var(--border-color);
+        }
+        th {
+            background-color: #f8f9fa;
+            color: #444;
+            font-weight: 700;
+            text-align: center;
+        }
+        td:first-child, th:first-child {
+            text-align: left;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* 커스텀 알림(Toast) 스타일 추가 */
+        #customToast {
+            visibility: hidden;
+            min-width: 280px;
+            background-color: #333333;
+            color: #ffffff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 16px 20px;
+            position: fixed;
+            z-index: 9999;
+            left: 50%;
+            bottom: 20px;
+            transform: translateX(-50%);
+            font-size: 0.95rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            opacity: 0;
+            transition: opacity 0.3s ease, bottom 0.3s ease;
+            pointer-events: none;
+        }
+        #customToast.show {
+            visibility: visible;
+            opacity: 1;
+            bottom: 50px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚗 주행 비용 비교 데이터 계산기</h1>
+        <p class="subtitle">BMW X3 vs KIA EV4 단가 파일 연동 및 속도별(kW) 분석 지원</p>
+
+        <div class="grid-layout">
+            <!-- 섹션 1: 차량 효율 및 주행 패턴 -->
+            <div class="card">
+                <div class="card-title">차량 및 주행 설정</div>
+                <div class="input-group">
+                    <label>내연기관 연비 (km/L)</label>
+                    <input type="number" id="gasEff" value="12" step="0.1" oninput="calculate()">
+                </div>
+                <div class="input-group">
+                    <label>전기차 전비 (km/kWh)</label>
+                    <input type="number" id="evEff" value="7" step="0.1" oninput="calculate()">
+                </div>
+                <div class="input-group" style="margin-top: 24px;">
+                    <label>일 주행거리 (km)</label>
+                    <input type="number" id="dailyDist" value="200" oninput="calculate()">
+                </div>
+                <div class="input-group">
+                    <label>주 주행일수 (일)</label>
+                    <input type="number" id="weeklyDays" value="5" max="7" oninput="calculate()">
+                </div>
+                <div class="input-group">
+                    <label>년 주행일수 (일)</label>
+                    <input type="number" id="yearlyDays" value="198" max="365" oninput="calculate()">
+                </div>
+                <div class="input-group" style="margin-top: 24px;">
+                    <label>통행료 편도 (원)</label>
+                    <input type="number" id="tollFee" value="5400" oninput="calculate()">
+                </div>
+                <div class="input-group">
+                    <label>전기차 통행료 감면율 (%)</label>
+                    <input type="number" id="tollDiscount" value="30" max="100" oninput="calculate()">
+                </div>
+            </div>
+
+            <!-- 섹션 2: 파일 업로드 및 비용 설정 -->
+            <div class="card">
+                <div class="card-title">단가 데이터 연동 (옵션)</div>
+                <div class="file-group">
+                    <label>주유소 평균판매가격 (CSV)</label>
+                    <input type="file" id="gasFile" accept=".csv">
+                    <p class="file-desc">※ '경기' 지역 데이터를 기준으로 가격을 추출합니다.</p>
+                </div>
+                <div class="file-group">
+                    <!-- Excel에서 CSV 업로드로 변경 -->
+                    <label>충전속도별 요금분류 (CSV)</label>
+                    <input type="file" id="evFile" accept=".csv">
+                    
+                    <!-- 충전 속도 옵션 선택 영역 (업로드 전 숨김 처리) -->
+                    <div id="evCategoryBox" style="display: none; margin-top: 12px;">
+                        <label style="font-size: 0.9rem; color: #444;">⚡ 충전 속도(kW) 카테고리 선택</label>
+                        <select id="evSpeedSelect" onchange="changeEvSpeedCategory()">
+                            <!-- 자바스크립트로 옵션 동적 추가됨 -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="card-title" style="margin-top: 30px; border-bottom: none; padding-bottom: 0;">단가 적용 확인</div>
+                <div class="input-group" style="margin-top: 15px;">
+                    <label>휘발유 유가 (원/L)</label>
+                    <div class="input-col">
+                        <div class="options-row" id="gasOptContainer" style="display:none;">
+                            <button class="opt-btn gas-btn" onclick="applyOpt('gas', 'min')" id="gas-btn-min">최저</button>
+                            <button class="opt-btn gas-btn" onclick="applyOpt('gas', 'avg')" id="gas-btn-avg">평균</button>
+                            <button class="opt-btn gas-btn" onclick="applyOpt('gas', 'max')" id="gas-btn-max">최고</button>
+                        </div>
+                        <input type="number" id="gasPrice" value="1865" oninput="clearActive('gas'); calculate();">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>전기충전비 (원/kWh)</label>
+                    <div class="input-col">
+                        <div class="options-row" id="evOptContainer" style="display:none;">
+                            <button class="opt-btn ev-btn" onclick="applyOpt('ev', 'min')" id="ev-btn-min">최저</button>
+                            <button class="opt-btn ev-btn" onclick="applyOpt('ev', 'avg')" id="ev-btn-avg">평균</button>
+                            <button class="opt-btn ev-btn" onclick="applyOpt('ev', 'max')" id="ev-btn-max">최고</button>
+                        </div>
+                        <input type="number" id="evPrice" value="292" oninput="clearActive('ev'); calculate();">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="highlight-box">
+            <h2>🎉 1년 기준 전기차 전환 시 예상 절감액</h2>
+            <div class="amount" id="yearlySaving">0원</div>
+        </div>
+
+        <div class="results-grid">
+            <div class="result-card">
+                <h3>하루(일) 유지비</h3>
+                <div class="compare-row">
+                    <span>내연기관</span><span class="val-gas" id="r-daily-gas">0원</span>
+                </div>
+                <div class="compare-row">
+                    <span>전기차</span><span class="val-ev" id="r-daily-ev">0원</span>
+                </div>
+                <div class="compare-row total">
+                    <span>차액</span><span id="r-daily-diff">0원</span>
+                </div>
+            </div>
+
+            <div class="result-card">
+                <h3>일주일 유지비</h3>
+                <div class="compare-row">
+                    <span>내연기관</span><span class="val-gas" id="r-weekly-gas">0원</span>
+                </div>
+                <div class="compare-row">
+                    <span>전기차</span><span class="val-ev" id="r-weekly-ev">0원</span>
+                </div>
+                <div class="compare-row total">
+                    <span>차액</span><span id="r-weekly-diff">0원</span>
+                </div>
+            </div>
+
+            <div class="result-card">
+                <h3>1년 유지비</h3>
+                <div class="compare-row">
+                    <span>내연기관</span><span class="val-gas" id="r-yearly-gas">0원</span>
+                </div>
+                <div class="compare-row">
+                    <span>전기차</span><span class="val-ev" id="r-yearly-ev">0원</span>
+                </div>
+                <div class="compare-row total">
+                    <span>차액</span><span id="r-yearly-diff">0원</span>
+                </div>
+            </div>
+        </div>
+
+        <button class="breakdown-toggle" onclick="toggleDetails()">📊 상세 사용량 및 비용 내역 보기</button>
+        <div class="breakdown-content" id="detailsSection">
+            <table>
+                <thead>
+                    <tr>
+                        <th>구분</th>
+                        <th>필요 연료/전력 (일)</th>
+                        <th>연료/충전비 (일)</th>
+                        <th>왕복 통행료 (일)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>내연기관 (BMW X3)</td>
+                        <td id="d-fuel-req">0 L</td>
+                        <td id="d-fuel-cost">0원</td>
+                        <td id="d-toll-gas">0원</td>
+                    </tr>
+                    <tr>
+                        <td>전기차 (KIA EV4)</td>
+                        <td id="d-power-req">0 kWh</td>
+                        <td id="d-power-cost">0원</td>
+                        <td id="d-toll-ev">0원</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 커스텀 알림창 UI 요소 -->
+    <div id="customToast"></div>
+
+    <script>
+        // --- 커스텀 알림(Toast) 헬퍼 함수 ---
+        let toastTimeout;
+        function showCustomAlert(msg) {
+            const toast = document.getElementById("customToast");
+            toast.innerText = msg;
+            toast.classList.add("show");
+            
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove("show");
+            }, 3000);
+        }
+
+        // --- 1. 유가 및 충전비 파일 처리 로직 ---
+        let gasData = { min: 0, avg: 0, max: 0 };
+        let evData = { min: 0, avg: 0, max: 0 };
+        let evDataMap = {}; // 용량구분(kW)별 가격 배열 저장 객체
+
+        // CSV 파일 처리 (주유소 유가)
+        document.getElementById('gasFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                let text = e.target.result;
+                if (!text.includes('경기')) {
+                    const readerUtf8 = new FileReader();
+                    readerUtf8.onload = function(ev) { parseGasCsv(ev.target.result); };
+                    readerUtf8.readAsText(file, "UTF-8");
+                } else {
+                    parseGasCsv(text);
+                }
+            };
+            reader.readAsText(file, "EUC-KR");
+        });
+
+        function parseGasCsv(text) {
+            let results = Papa.parse(text, { header: true, skipEmptyLines: true });
+            let prices = [];
+            results.data.forEach(row => {
+                let price = parseFloat(row['경기']);
+                if (!isNaN(price)) prices.push(price);
+            });
+            
+            if (prices.length > 0) {
+                gasData.min = Math.min(...prices);
+                gasData.max = Math.max(...prices);
+                gasData.avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+                
+                document.getElementById('gasOptContainer').style.display = 'flex';
+                document.getElementById('gas-btn-min').innerText = `최저 (${Math.round(gasData.min)})`;
+                document.getElementById('gas-btn-avg').innerText = `평균 (${Math.round(gasData.avg)})`;
+                document.getElementById('gas-btn-max').innerText = `최고 (${Math.round(gasData.max)})`;
+                
+                applyOpt('gas', 'avg');
+                showCustomAlert("✅ 주유소 유가 데이터(경기 지역)가 연동되었습니다.");
+            }
+        }
+
+        // CSV 파일 처리 (전기차 충전비 - 속도별(kW) 분류)
+        document.getElementById('evFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                let text = e.target.result;
+                // 체크 조건: kW 텍스트가 있는지 여부로 인코딩 재시도
+                if (!text.toLowerCase().includes('kw')) {
+                    const readerUtf8 = new FileReader();
+                    readerUtf8.onload = function(ev) { parseEvCsv(ev.target.result); };
+                    readerUtf8.readAsText(file, "UTF-8");
+                } else {
+                    parseEvCsv(text);
+                }
+            };
+            reader.readAsText(file, "EUC-KR"); // 국내 관공서 데이터 기본 인코딩
+        });
+
+        function parseEvCsv(text) {
+            let results = Papa.parse(text, { header: true, skipEmptyLines: true });
+            evDataMap = {}; 
+            let allPrices = [];
+
+            // 헤더에서 "kW" 문자가 포함된 컬럼명들을 자동 추출
+            let kwColumns = [];
+            if(results.meta && results.meta.fields) {
+                kwColumns = results.meta.fields.filter(f => f.toLowerCase().includes('kw'));
+            }
+
+            // 각 행별 데이터 파싱
+            results.data.forEach(row => {
+                kwColumns.forEach(kw => {
+                    let val = row[kw];
+                    // 비어있거나 '—', '-' 등의 결측값 제외
+                    if(val && val.trim() !== '' && val.trim() !== '—' && val.trim() !== '-') {
+                        // 콤마 등 문자 제거 후 숫자로 변환
+                        let priceStr = val.toString().replace(/,/g, '').trim();
+                        let price = parseFloat(priceStr);
+                        if(!isNaN(price)) {
+                            if(!evDataMap[kw]) evDataMap[kw] = [];
+                            evDataMap[kw].push(price);
+                            allPrices.push(price);
+                        }
+                    }
+                });
+            });
+
+            if (allPrices.length > 0) {
+                evDataMap['전체'] = allPrices;
+
+                // 셀렉트 박스(드롭다운) 옵션 채우기
+                const select = document.getElementById('evSpeedSelect');
+                select.innerHTML = ''; // 기존 옵션 초기화
+                
+                // 전체 옵션 추가
+                let optAll = document.createElement('option');
+                optAll.value = '전체';
+                optAll.text = `전체 (총 ${allPrices.length}건)`;
+                select.appendChild(optAll);
+
+                // 파싱된 kW 용량별 옵션 추가
+                kwColumns.forEach(kw => {
+                    if(evDataMap[kw] && evDataMap[kw].length > 0) {
+                        let opt = document.createElement('option');
+                        opt.value = kw;
+                        opt.text = `${kw} (총 ${evDataMap[kw].length}건)`;
+                        select.appendChild(opt);
+                    }
+                });
+
+                document.getElementById('evCategoryBox').style.display = 'block';
+                document.getElementById('evOptContainer').style.display = 'flex';
+                
+                // '전체' 카테고리 기준으로 최초 계산 트리거
+                changeEvSpeedCategory();
+                showCustomAlert("✅ 전기차 충전 단가(CSV) 및 속도별 분석 기능이 성공적으로 연동되었습니다.");
+            } else {
+                showCustomAlert("❌ CSV 파일에서 유효한 충전 단가(kW) 데이터를 찾을 수 없습니다.");
+            }
+        }
+
+        // 충전 속도(용량구분) 드롭다운 변경 시 실행
+        function changeEvSpeedCategory() {
+            const selectedCategory = document.getElementById('evSpeedSelect').value;
+            const prices = evDataMap[selectedCategory];
+            
+            // 선택된 카테고리의 가격 통계 새로고침
+            evData.min = Math.min(...prices);
+            evData.max = Math.max(...prices);
+            evData.avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+            
+            // 버튼 라벨 업데이트
+            document.getElementById('ev-btn-min').innerText = `최저 (${Math.round(evData.min)})`;
+            document.getElementById('ev-btn-avg').innerText = `평균 (${Math.round(evData.avg)})`;
+            document.getElementById('ev-btn-max').innerText = `최고 (${Math.round(evData.max)})`;
+            
+            // '평균가'를 기본값으로 즉시 자동 입력
+            applyOpt('ev', 'avg');
+        }
+
+        // 추출된 값 버튼 클릭 시 입력 폼에 적용
+        function applyOpt(type, valType) {
+            clearActive(type);
+            document.getElementById(`${type}-btn-${valType}`).classList.add('active');
+            
+            if (type === 'gas') {
+                document.getElementById('gasPrice').value = Math.round(gasData[valType]);
+            } else {
+                document.getElementById('evPrice').value = Math.round(evData[valType]);
+            }
+            calculate();
+        }
+
+        // 직접 입력 시 활성화된 버튼 색상 초기화
+        function clearActive(type) {
+            document.querySelectorAll(`.${type}-btn`).forEach(b => b.classList.remove('active'));
+        }
+
+
+        // --- 2. 기본 비용 계산 및 렌더링 로직 ---
+        function fmt(num) {
+            return Math.round(num).toLocaleString('ko-KR') + '원';
+        }
+        function fmtDec(num, unit) {
+            return num.toFixed(2) + ' ' + unit;
+        }
+
+        function calculate() {
+            const gasEff = parseFloat(document.getElementById('gasEff').value) || 0;
+            const evEff = parseFloat(document.getElementById('evEff').value) || 0;
+            const dailyDist = parseFloat(document.getElementById('dailyDist').value) || 0;
+            const weeklyDays = parseFloat(document.getElementById('weeklyDays').value) || 0;
+            const yearlyDays = parseFloat(document.getElementById('yearlyDays').value) || 0;
+            const gasPrice = parseFloat(document.getElementById('gasPrice').value) || 0;
+            const evPrice = parseFloat(document.getElementById('evPrice').value) || 0;
+            const tollFee = parseFloat(document.getElementById('tollFee').value) || 0;
+            const tollDiscount = parseFloat(document.getElementById('tollDiscount').value) / 100 || 0;
+
+            if(gasEff === 0 || evEff === 0) return;
+
+            const dailyFuel = dailyDist / gasEff;
+            const dailyPower = dailyDist / evEff;
+
+            const dailyGasCost = dailyFuel * gasPrice;
+            const dailyEvCost = dailyPower * evPrice;
+
+            const dailyTollGas = tollFee * 2;
+            const dailyTollEv = (tollFee - (tollFee * tollDiscount)) * 2;
+
+            const totalDailyGas = dailyGasCost + dailyTollGas;
+            const totalDailyEv = dailyEvCost + dailyTollEv;
+
+            const totalWeeklyGas = totalDailyGas * weeklyDays;
+            const totalWeeklyEv = totalDailyEv * weeklyDays;
+
+            const totalYearlyGas = totalDailyGas * yearlyDays;
+            const totalYearlyEv = totalDailyEv * yearlyDays;
+
+            // DOM 렌더링 적용
+            const yearlySaving = totalYearlyGas - totalYearlyEv;
+            document.getElementById('yearlySaving').innerText = fmt(yearlySaving);
+
+            document.getElementById('r-daily-gas').innerText = fmt(totalDailyGas);
+            document.getElementById('r-daily-ev').innerText = fmt(totalDailyEv);
+            document.getElementById('r-daily-diff').innerText = fmt(totalDailyGas - totalDailyEv);
+
+            document.getElementById('r-weekly-gas').innerText = fmt(totalWeeklyGas);
+            document.getElementById('r-weekly-ev').innerText = fmt(totalWeeklyEv);
+            document.getElementById('r-weekly-diff').innerText = fmt(totalWeeklyGas - totalWeeklyEv);
+
+            document.getElementById('r-yearly-gas').innerText = fmt(totalYearlyGas);
+            document.getElementById('r-yearly-ev').innerText = fmt(totalYearlyEv);
+            document.getElementById('r-yearly-diff').innerText = fmt(totalYearlyGas - totalYearlyEv);
+
+            document.getElementById('d-fuel-req').innerText = fmtDec(dailyFuel, 'L');
+            document.getElementById('d-power-req').innerText = fmtDec(dailyPower, 'kWh');
+            document.getElementById('d-fuel-cost').innerText = fmt(dailyGasCost);
+            document.getElementById('d-power-cost').innerText = fmt(dailyEvCost);
+            document.getElementById('d-toll-gas').innerText = fmt(dailyTollGas);
+            document.getElementById('d-toll-ev').innerText = fmt(dailyTollEv);
+        }
+
+        function toggleDetails() {
+            const el = document.getElementById("detailsSection");
+            el.style.display = (el.style.display === "block") ? "none" : "block";
+        }
+
+        // 초기 계산 실행
+        calculate();
+    </script>
+</body>
+</html>
